@@ -1,77 +1,58 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
 import * as THREE from 'three';
 
 @Component({
   selector: 'app-imagen-360',
   standalone: true,
-  templateUrl: './imagen-360.component.html',
-  styleUrls: ['./imagen-360.component.css']
+  templateUrl: './imagen-360.html',
+  styleUrl: './imagen-360.scss'
 })
-export class Imagen360Component implements AfterViewInit, OnDestroy {
+export class Imagen360 implements AfterViewInit {
 
-  @ViewChild('rendererContainer', { static: true }) container!: ElementRef;
-
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private sphere!: THREE.Mesh;
-  private animationId!: number;
+  @ViewChild('viewer', { static: true }) viewerRef!: ElementRef;
 
   ngAfterViewInit(): void {
-    this.initScene();
-    this.animate();
-  }
 
-  private initScene(): void {
+    const scene = new THREE.Scene();
 
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
 
-    // Escena
-    this.scene = new THREE.Scene();
+    camera.position.z = 0.1;
 
-    // Cámara
-    this.camera = new THREE.PerspectiveCamera(75, width / height, 1, 1100);
-    this.camera.position.set(0, 0, 0.1);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    this.viewerRef.nativeElement.appendChild(renderer.domElement);
 
-    // Renderizador
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(width, height);
-    this.container.nativeElement.appendChild(this.renderer.domElement);
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2000',
+      (texture) => {
+        const geometry = new THREE.SphereGeometry(500, 60, 40);
+        geometry.scale(-1, 1, 1);
 
-    // Esfera invertida
-    const geometry = new THREE.SphereGeometry(500, 60, 40);
-    geometry.scale(-1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({ map: texture });
+        const sphere = new THREE.Mesh(geometry, material);
+        scene.add(sphere);
+      }
+    );
 
-    const texture = new THREE.TextureLoader().load('assets/360.jpg');
-    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const animate = () => {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    };
 
-    this.sphere = new THREE.Mesh(geometry, material);
-    this.scene.add(this.sphere);
+    animate();
 
-    window.addEventListener('resize', () => this.onResize());
-  }
-
-  private animate = (): void => {
-    this.animationId = requestAnimationFrame(this.animate);
-
-    // Rotación suave
-    this.sphere.rotation.y += 0.0005;
-
-    this.renderer.render(this.scene, this.camera);
-  };
-
-  private onResize(): void {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
-  }
-
-  ngOnDestroy(): void {
-    cancelAnimationFrame(this.animationId);
-    this.renderer.dispose();
+    window.addEventListener('mousemove', (event) => {
+      const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+      const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+      camera.rotation.y = mouseX * 0.3;
+      camera.rotation.x = mouseY * 0.2;
+    });
   }
 }
